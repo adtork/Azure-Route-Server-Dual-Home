@@ -128,3 +128,99 @@ echo @routeserverhubsubnet_id
 az network routeserver create --name HubRouteServer --resource-group $rg --hosted-subnet $arshubsubnet_id --public-ip-address HubRouteServerIP --output none
 az network routeserver create --name Hub2RouteServer --resource-group $rg --hosted-subnet $arshub2subnet_id --public-ip-address Hub2RouteServerIP --output none
 az network routeserver create --name SpokeRouteServer --resource-group $rg --hosted-subnet $arsspokesubnet_id --public-ip-address SpokeRouteServerIP   --output none
+
+#Create the BGP connection between ARS and CSRs
+#We will use CSR ASNs of 65002, 65003
+
+az network routeserver peering create --name hubCSR --peer-ip 172.16.1.196 --peer-asn 65002 --routeserver HubRouteServer --resource-group $rg --output none
+az network routeserver peering create --name hub2CSR --peer-ip 172.16.2.196 --peer-asn 65003 --routeserver Hub2RouteServer --resource-group $rg --output none
+az network routeserver peering create --name hubCSR --peer-ip 172.16.1.196 --peer-asn 65002 --routeserver SpokeRouteServer --resource-group $rg --output none
+az network routeserver peering create --name hub2CSR --peer-ip 172.16.2.196 --peer-asn 65003 --routeserver SpokeRouteServer --resource-group $rg --output none
+
+#Create the CSR BGP Config to peer with ARS
+#Get ARS IPs need for CSR Config
+
+az network routeserver show --name HubRouteServer --resource-group $rg
+az network routeserver show --name Hub2RouteServer --resource-group $rg
+az network routeserver show --name SpokeRouteServer --resource-group $rg
+
+# In Serial console type enable<hit enter>, conf-t
+router bgp 65002 <--HubCSR
+neighbor 172.16.1.5 remote-as 65515
+neighbor 172.16.1.5 ebgp-multihop 255
+neighbor 172.16.1.4 remote-as 65515
+neighbor 172.16.1.4 ebgp-multihop 255
+neighbor 172.16.3.5 remote-as 65515
+neighbor 172.16.3.5 ebgp-multihop 255
+neighbor 172.16.3.4 remote-as 65515
+neighbor 172.16.3.4 ebgp-multihop 255
+	 !
+address-family ipv4
+neighbor 172.16.1.5 activate
+neighbor 172.16.1.4 activate
+neighbor 172.16.3.5 activate
+neighbor 172.16.3.4 activate
+exit-address-family
+	!
+router bgp 65002
+address-family ipv4
+neighbor 172.16.3.4 as-override
+neighbor 172.16.3.5 as-override
+exit-address-family
+ 
+address-family ipv4
+neighbor 172.16.1.4 as-override
+neighbor 172.16.1.5 as-override
+exit-address-family
+
+add static route to ARS subnet that point to the default gateway of the CSR Internal subnet to avoid recursive routing failure for ARS BGP endpoints learned via BGP
+ip route 172.16.1.0 255.255.255.0 172.16.1.193
+ip route 172.16.3.0 255.255.255.0 172.16.1.193
+
+az network routeserver peering list-learned-routes --name hubcsr --routeserver HubRouteServer --resource-group $rg
+
+router bgp 65003 <--Hub2CSR
+neighbor 172.16.2.5 remote-as 65515
+neighbor 172.16.2.5 ebgp-multihop 255
+neighbor 172.16.2.4 remote-as 65515
+neighbor 172.16.2.4 ebgp-multihop 255
+neighbor 172.16.3.5 remote-as 65515
+neighbor 172.16.3.5 ebgp-multihop 255
+neighbor 172.16.3.4 remote-as 65515
+neighbor 172.16.3.4 ebgp-multihop 255
+	 !
+address-family ipv4
+neighbor 172.16.2.5 activate
+neighbor 172.16.2.4 activate
+neighbor 172.16.3.5 activate
+neighbor 172.16.3.4 activate
+exit-address-family
+	!
+router bgp 65003
+address-family ipv4
+neighbor 172.16.3.4 as-override
+neighbor 172.16.3.5 as-override
+exit-address-family
+ 
+address-family ipv4
+neighbor 172.16.2.4 as-override
+neighbor 172.16.2.5 as-override
+exit-address-family
+
+add static route to ARS subnet that point to the default gateway of the CSR2 Internal subnet to avoid recursive routing failure for ARS BGP endpoints learned via BGP
+ip route 172.16.2.0 255.255.255.0 172.16.2.193
+
+#Create the IaaS VMs in branchs, hubs and spoke to test the connection and learned routes
+
+az vm create -n hubVM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name hub --admin-username $username --admin-password $password --no-wait
+az vm create -n hub2VM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name hub2 --admin-username $username --admin-password $password --no-wait
+az vm create -n spokeVM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name spoke --admin-username $username --admin-password $password --no-wait
+az vm create -n branchVM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name branch --admin-username $username --admin-password $password --no-wait
+az vm create -n branch2VM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name branch2 --admin-username $username --admin-password $password --no-wait
+
+#Verify BGP on CSRs and ARS learned routes on CSR and ARS
+
+# Test connectivity across hubs and spokes
+
+
+
