@@ -11,7 +11,6 @@ This lab is using serial console for all VM connections including the CSRs. The 
 ## Commands
 ```bash
 #Paramaters
-
 loc=EastUS2
 rg=Lab_ARSDual
 username=azureuser
@@ -218,9 +217,198 @@ az vm create -n spokeVM  -g $rg --image ubuntults --public-ip-sku Standard --siz
 az vm create -n branchVM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name branch --admin-username $username --admin-password $password --no-wait
 az vm create -n branch2VM  -g $rg --image ubuntults --public-ip-sku Standard --size $vmsize -l $loc --subnet vmsubnet --vnet-name branch2 --admin-username $username --admin-password $password --no-wait
 
-#Verify BGP on CSRs and ARS learned routes on CSR and ARS
+#Verify BGP on CSRs and ARS learned routes on CSRs
 
-# Test connectivity across hubs and spokes
+#HubCSR BGP State and Learned Routes
+
+hubCSR#sh ip bgp summ
+BGP router identifier 172.16.1.132, local AS number 65002
+BGP table version is 4, main routing table version 4
+3 network entries using 744 bytes of memory
+6 path entries using 816 bytes of memory
+2/2 BGP path/bestpath attribute entries using 576 bytes of memory
+2 BGP AS-PATH entries using 64 bytes of memory
+0 BGP route-map cache entries using 0 bytes of memory
+0 BGP filter-list cache entries using 0 bytes of memory
+BGP using 2200 total bytes of memory
+BGP activity 3/0 prefixes, 6/0 paths, scan interval 60 secs
+3 networks peaked at 22:21:30 Feb 3 2023 UTC (00:16:08.210 ago)
+
+Neighbor        V           AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+172.16.1.4      4        65515      22      22        4    0    0 00:16:04        2
+172.16.1.5      4        65515      22      22        4    0    0 00:16:07        2
+172.16.3.4      4        65515      21      22        4    0    0 00:16:08        1
+172.16.3.5      4        65515      21      22        4    0    0 00:16:06        1
+
+hubCSR#sh ip route
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is 172.16.1.129 to network 0.0.0.0
+
+S*    0.0.0.0/0 [1/0] via 172.16.1.129
+      168.63.0.0/32 is subnetted, 1 subnets
+S        168.63.129.16 [254/0] via 172.16.1.129
+      169.254.0.0/32 is subnetted, 1 subnets
+S        169.254.169.254 [254/0] via 172.16.1.129
+      172.16.0.0/16 is variably subnetted, 7 subnets, 4 masks
+S        172.16.1.0/24 [1/0] via 172.16.1.193
+C        172.16.1.128/26 is directly connected, GigabitEthernet1
+L        172.16.1.132/32 is directly connected, GigabitEthernet1
+C        172.16.1.192/27 is directly connected, GigabitEthernet2
+L        172.16.1.196/32 is directly connected, GigabitEthernet2
+S        172.16.3.0/24 [1/0] via 172.16.1.1
+B        172.16.4.0/24 [20/0] via 172.16.1.4, 00:16:26
+hubCSR#
+hubCSR#sh ip bgp
+BGP table version is 4, local router ID is 172.16.1.132
+Status codes: s suppressed, d damped, h history, * valid, > best, i - internal, 
+              r RIB-failure, S Stale, m multipath, b backup-path, f RT-Filter, 
+              x best-external, a additional-path, c RIB-compressed, 
+              t secondary path, L long-lived-stale,
+Origin codes: i - IGP, e - EGP, ? - incomplete
+RPKI validation codes: V valid, I invalid, N Not found
+
+     Network          Next Hop            Metric LocPrf Weight Path
+ r>   172.16.1.0/24    172.16.1.4                             0 65515 i
+ r                     172.16.1.5                             0 65515 i
+ r    172.16.3.0/24    172.16.3.5                             0 65515 i
+ r>                    172.16.3.4                             0 65515 i
+ *>   172.16.4.0/24    172.16.1.4                             0 65515 65512 i
+ *                     172.16.1.5                             0 65515 65512 i
+
+#Hub2CSR BGP State and Learned Routes
+
+hub2CSR#sh ip bgp summ
+BGP router identifier 172.16.2.196, local AS number 65003
+BGP table version is 4, main routing table version 4
+3 network entries using 744 bytes of memory
+6 path entries using 816 bytes of memory
+2/2 BGP path/bestpath attribute entries using 576 bytes of memory
+2 BGP AS-PATH entries using 64 bytes of memory
+0 BGP route-map cache entries using 0 bytes of memory
+0 BGP filter-list cache entries using 0 bytes of memory
+BGP using 2200 total bytes of memory
+BGP activity 3/0 prefixes, 6/0 paths, scan interval 60 secs
+3 networks peaked at 22:21:16 Feb 3 2023 UTC (00:25:56.682 ago)
+
+Neighbor        V           AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+172.16.2.4      4        65515      33      33        4    0    0 00:25:56        2
+172.16.2.5      4        65515      33      33        4    0    0 00:25:55        2
+172.16.3.4      4        65515      32      33        4    0    0 00:25:58        1
+172.16.3.5      4        65515      32      34        4    0    0 00:25:57        1
+
+hub2CSR#sh ip bgp
+BGP table version is 4, local router ID is 172.16.2.196
+Status codes: s suppressed, d damped, h history, * valid, > best, i - internal, 
+              r RIB-failure, S Stale, m multipath, b backup-path, f RT-Filter, 
+              x best-external, a additional-path, c RIB-compressed, 
+              t secondary path, L long-lived-stale,
+Origin codes: i - IGP, e - EGP, ? - incomplete
+RPKI validation codes: V valid, I invalid, N Not found
+
+     Network          Next Hop            Metric LocPrf Weight Path
+ r    172.16.2.0/24    172.16.2.5                             0 65515 i
+ r>                    172.16.2.4                             0 65515 i
+ r    172.16.3.0/24    172.16.3.5                             0 65515 i
+ r>                    172.16.3.4                             0 65515 i
+ *    172.16.5.0/24    172.16.2.5                             0 65515 65511 i
+ *>                    172.16.2.4                             0 65515 65511 i
+hub2CSR#sh ip route
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is 172.16.2.129 to network 0.0.0.0
+
+S*    0.0.0.0/0 [1/0] via 172.16.2.129
+      168.63.0.0/32 is subnetted, 1 subnets
+S        168.63.129.16 [254/0] via 172.16.2.129
+      169.254.0.0/32 is subnetted, 1 subnets
+S        169.254.169.254 [254/0] via 172.16.2.129
+      172.16.0.0/16 is variably subnetted, 7 subnets, 4 masks
+S        172.16.2.0/24 [1/0] via 172.16.2.193
+C        172.16.2.128/26 is directly connected, GigabitEthernet1
+L        172.16.2.132/32 is directly connected, GigabitEthernet1
+C        172.16.2.192/27 is directly connected, GigabitEthernet2
+L        172.16.2.196/32 is directly connected, GigabitEthernet2
+S        172.16.3.0/24 [1/0] via 172.16.2.193
+B        172.16.5.0/24 [20/0] via 172.16.2.4, 00:25:26
 
 
+#Testing connectivity across VMs
+#BranchVM to HubVM and SpokeVM
+
+azureuser@branchVM:~$ ping -c 5 172.16.1.244
+PING 172.16.1.244 (172.16.1.244) 56(84) bytes of data.
+64 bytes from 172.16.1.244: icmp_seq=1 ttl=64 time=10.2 ms
+64 bytes from 172.16.1.244: icmp_seq=2 ttl=64 time=2.95 ms
+64 bytes from 172.16.1.244: icmp_seq=3 ttl=64 time=3.16 ms
+64 bytes from 172.16.1.244: icmp_seq=4 ttl=64 time=3.50 ms
+64 bytes from 172.16.1.244: icmp_seq=5 ttl=64 time=3.28 ms
+
+--- 172.16.1.244 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4006ms
+rtt min/avg/max/mdev = 2.953/4.637/10.281/2.828 ms
+azureuser@branchVM:~$
+
+azureuser@branchVM:~$ ping -c 5 172.16.3.244
+PING 172.16.3.244 (172.16.3.244) 56(84) bytes of data.
+64 bytes from 172.16.3.244: icmp_seq=1 ttl=63 time=4.88 ms
+64 bytes from 172.16.3.244: icmp_seq=2 ttl=63 time=4.01 ms
+64 bytes from 172.16.3.244: icmp_seq=3 ttl=63 time=3.17 ms
+64 bytes from 172.16.3.244: icmp_seq=4 ttl=63 time=3.88 ms
+64 bytes from 172.16.3.244: icmp_seq=5 ttl=63 time=4.68 ms
+
+--- 172.16.3.244 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4006ms
+rtt min/avg/max/mdev = 3.173/4.129/4.888/0.616 ms
+azureuser@branchVM:~$
+
+#Branch2VM to Hub2VM and SpokeVM
+
+azureuser@branch2VM:~$ ping 172.16.2.244 -c 5
+PING 172.16.2.244 (172.16.2.244) 56(84) bytes of data.
+64 bytes from 172.16.2.244: icmp_seq=1 ttl=64 time=4.24 ms
+64 bytes from 172.16.2.244: icmp_seq=2 ttl=64 time=6.31 ms
+64 bytes from 172.16.2.244: icmp_seq=3 ttl=64 time=12.2 ms
+64 bytes from 172.16.2.244: icmp_seq=4 ttl=64 time=9.63 ms
+64 bytes from 172.16.2.244: icmp_seq=5 ttl=64 time=3.61 ms
+
+--- 172.16.2.244 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4006ms
+rtt min/avg/max/mdev = 3.610/7.208/12.239/3.279 ms
+azureuser@branch2VM:~$
+
+azureuser@branch2VM:~$ ping 172.16.3.244 -c 5
+PING 172.16.3.244 (172.16.3.244) 56(84) bytes of data.
+64 bytes from 172.16.3.244: icmp_seq=1 ttl=63 time=24.5 ms
+64 bytes from 172.16.3.244: icmp_seq=2 ttl=63 time=14.0 ms
+64 bytes from 172.16.3.244: icmp_seq=3 ttl=63 time=3.41 ms
+64 bytes from 172.16.3.244: icmp_seq=4 ttl=63 time=5.08 ms
+64 bytes from 172.16.3.244: icmp_seq=5 ttl=63 time=3.64 ms
+
+--- 172.16.3.244 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4004ms
+rtt min/avg/max/mdev = 3.416/10.159/24.565/8.203 ms
+azureuser@branch2VM:~$
 
