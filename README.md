@@ -1,8 +1,7 @@
 # Azure-Route-Server Dual Home
-In this lab, we are going to deploy ARS in a dual home topology following this public article: https://learn.microsoft.com/en-us/azure/route-server/about-dual-homed-network
-This is an alternative approach besides using VNET peering to connect resources in a hub+spoke model and allow connections to and from on-premise. This could be useful in a side car environment. If say one of the hubs went down with ARS, the spoke would still be reachable via the other hub. In this lab, we are going to use Vnet-to-Vnet IPSEC connections with BGP simmulating on-premise instead of two ExpressRoute circuits. This is also needed, because you cannot do both VNG and LNG with ASN 65515, when building S2S IPSEC connections.
+In this lab, we are going to deploy ARS in a dual home topology following this public article: https://learn.microsoft.com/en-us/azure/route-server/about-dual-homed-network. This is an alternative approach besides using VNET peering to connect resources in a hub+spoke model and allow connections to and from on-premise. This could be useful in a side car environment. If say one of the hubs went down with ARS (hub or hub2), the spoke would still be reachable via the other hub. In this lab, we are going to use Vnet-to-Vnet IPSEC connections with BGP simmulating on-premise instead of two ExpressRoute circuits. This is also needed, because you cannot do both VNG and LNG with the same ASN(65515), when building S2S IPSEC connections.
 
-This lab is using serial console for all VM connections including the CSRs. The VM username is "azureser" and password is "MyP@SSword123!"
+This lab is using serial console for all VM connections including the CSRs. The username is "azureser" and password is MyP@SSword123! for all machines. 
 
 # Topology
 
@@ -411,4 +410,3 @@ PING 172.16.3.244 (172.16.3.244) 56(84) bytes of data.
 5 packets transmitted, 5 received, 0% packet loss, time 4004ms
 rtt min/avg/max/mdev = 3.416/10.159/24.565/8.203 ms
 azureuser@branch2VM:~$
-
