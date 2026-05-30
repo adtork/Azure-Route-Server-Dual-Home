@@ -1,0 +1,74 @@
+# Cisco CSR configuration for Azure Route Server dual-home lab
+# Open the Azure Serial Console for each CSR VM, then type:
+#   enable
+#   conf t
+# Paste only the block that matches the CSR VM.
+
+############################################################
+# hubCSR (ASN 65002)
+############################################################
+router bgp 65002
+neighbor 172.16.1.5 remote-as 65515
+neighbor 172.16.1.5 ebgp-multihop 255
+neighbor 172.16.1.4 remote-as 65515
+neighbor 172.16.1.4 ebgp-multihop 255
+neighbor 172.16.3.5 remote-as 65515
+neighbor 172.16.3.5 ebgp-multihop 255
+neighbor 172.16.3.4 remote-as 65515
+neighbor 172.16.3.4 ebgp-multihop 255
+!
+address-family ipv4
+neighbor 172.16.1.5 activate
+neighbor 172.16.1.4 activate
+neighbor 172.16.3.5 activate
+neighbor 172.16.3.4 activate
+exit-address-family
+!
+router bgp 65002
+address-family ipv4
+neighbor 172.16.3.4 as-override
+neighbor 172.16.3.5 as-override
+exit-address-family
+!
+address-family ipv4
+neighbor 172.16.1.4 as-override
+neighbor 172.16.1.5 as-override
+exit-address-family
+!
+! Static routes avoid recursive routing failure for ARS BGP endpoints learned via BGP.
+ip route 172.16.1.0 255.255.255.0 172.16.1.193
+ip route 172.16.3.0 255.255.255.0 172.16.1.193
+
+############################################################
+# hub2CSR (ASN 65003)
+############################################################
+router bgp 65003
+neighbor 172.16.2.5 remote-as 65515
+neighbor 172.16.2.5 ebgp-multihop 255
+neighbor 172.16.2.4 remote-as 65515
+neighbor 172.16.2.4 ebgp-multihop 255
+neighbor 172.16.3.5 remote-as 65515
+neighbor 172.16.3.5 ebgp-multihop 255
+neighbor 172.16.3.4 remote-as 65515
+neighbor 172.16.3.4 ebgp-multihop 255
+!
+address-family ipv4
+neighbor 172.16.2.5 activate
+neighbor 172.16.2.4 activate
+neighbor 172.16.3.5 activate
+neighbor 172.16.3.4 activate
+exit-address-family
+!
+router bgp 65003
+address-family ipv4
+neighbor 172.16.3.4 as-override
+neighbor 172.16.3.5 as-override
+exit-address-family
+!
+address-family ipv4
+neighbor 172.16.2.4 as-override
+neighbor 172.16.2.5 as-override
+exit-address-family
+!
+! Static route avoids recursive routing failure for ARS BGP endpoints learned via BGP.
+ip route 172.16.2.0 255.255.255.0 172.16.2.193
